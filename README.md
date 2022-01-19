@@ -6,7 +6,7 @@ Framework7 app created with following options:
 
 ```
 {
-  "cwd": "/home/stsier/amarisoftue",
+  "cwd": "/home/stsier/amarisoftui",
   "type": [
     "web"
   ],
