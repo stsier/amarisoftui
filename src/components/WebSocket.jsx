@@ -62,16 +62,25 @@ const  WebSocket = ({props, callback}, ref)  => {
     },
     getConfig() {
       sendMessage('{"message": "config_get"}');
-     
+     // sendMessage('{"message": "register", "register" : "ue_measurement_report"}');
+    },
+    getLog() {
+      sendMessage('{"message": "log_get"}');
     },
     setGain(cell_id, gain) {
       sendMessage('{"message": "cell_gain", "cell_id":'+cell_id+',"gain":'+gain+'}');
      
     },
-
+    setNoiseLevel(noise_level) {
+      sendMessage('{"message": "noise_level", "noise_level":'+noise_level+'}');
+    },
+  
+    getUE(cell_id, gain) {
+      //sendMessage('{"event": "ue_measurement_report", "message": "ran_ue_id"}');
+      sendMessage('{"message": "ue_get", "stats": true}');
+    },
+  
   }), []);
-
-
     return null;
  /* return (
     <Block>
@@ -80,7 +89,7 @@ const  WebSocket = ({props, callback}, ref)  => {
     </Block>
   );*/
 };
-export default React.forwardRef(WebSocket); ;
+export default React.forwardRef(WebSocket); 
 
 //export default WebSocket;
 
