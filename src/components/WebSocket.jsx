@@ -15,7 +15,7 @@ import {
 const  WebSocket = ({props, callback}, ref)  => {
   var options = {extraHeaders: {"origin": "Test"}};
   var proto = 'ws';
-  var server = '192.168.35.78:9001';
+  var server = '192.168.35.100:9001';
   let url = proto + '://' + server + '/'
   //Public API that will echo messages sent to it back to the client
   const [socketUrl, setSocketUrl] = useState(url);
@@ -46,13 +46,13 @@ const  WebSocket = ({props, callback}, ref)  => {
    {
     setSocketUrl(url);
    }
-    , []);
+  , []);
 
   const handleClickSendMessage = useCallback(() =>
-  {
-    sendMessage('{"message": "config_get"}');
-   }
-    , []);
+    {
+      sendMessage('{"message": "config_get"}');
+    }
+  , []);
     
 
   // external component API
@@ -65,20 +65,41 @@ const  WebSocket = ({props, callback}, ref)  => {
      // sendMessage('{"message": "register", "register" : "ue_measurement_report"}');
     },
     getLog() {
-      sendMessage('{"message": "log_get"}');
+      let msg = {
+        message: "log_get",
+        min: 1,
+        max: 4096,
+        headers: false
+      }
+      sendMessage(JSON.stringify(msg));
     },
+
     setGain(cell_id, gain) {
-      sendMessage('{"message": "cell_gain", "cell_id":'+cell_id+',"gain":'+gain+'}');
-     
+      let msg = {
+        message: "cell_gain",
+        cell_id: cell_id,
+        gain: gain,
+      }
+      sendMessage(JSON.stringify(msg));
     },
+
     setNoiseLevel(noise_level) {
-      sendMessage('{"message": "noise_level", "noise_level":'+noise_level+'}');
+      let msg = {
+        message: "noise_level",
+        noise_level: noise_level,
+      }
+      sendMessage(JSON.stringify(msg));
     },
   
     getUE(cell_id, gain) {
       //sendMessage('{"event": "ue_measurement_report", "message": "ran_ue_id"}');
-      sendMessage('{"message": "ue_get", "stats": true}');
+      let msg = {
+        message: "register",
+        type: "ue_measurement_report",
+      }
+      sendMessage(JSON.stringify(msg));
     },
+
   
   }), []);
     return null;

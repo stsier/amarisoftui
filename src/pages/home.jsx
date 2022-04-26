@@ -22,10 +22,20 @@ import {
   NavLeft,
   BlockFooter,
   ListItemContent,
-  ListGroup
+  ListGroup,
+  Row,
+  Col,
+  BlockHeader,
+  Toggle
+
 } from 'framework7-react';
 
 import WebSocket from '../components/WebSocket';
+
+let logs = [];
+let cellsToLog = [];
+let layers = ['NAS', 'RRC', 'S1AP', 'PHY', 'RLC', 'MAC'];
+let layersToLog = layers;
 
 
 const HomePage = (props) => {
@@ -41,6 +51,9 @@ const HomePage = (props) => {
   let [cinrElement, setCinrElement] = useState([]);
   let [noiseLevelElement, setNoiseLevelElement] = useState([]);
   let [logElement, setLogElement] = useState([]);
+  let [logControlsElement, setLogControlsElement] = useState([]);
+
+  let loggerInterval = null;
 
   let cells = [];
   let nbCells = [];
@@ -60,7 +73,11 @@ const HomePage = (props) => {
     let d = new Date(t);
     return d.toLocaleTimeString("fr-Fr");
   }
-  const getLogHeaders= (log) => {
+  const getDate = (t) => {
+    let d = new Date(t);
+    return d.toLocaleDateString("fr-Fr");
+  }
+  const getLogHeaders = (log) => {
     let l = {};
     Object.assign(l, log);
     delete l.timestamp;
@@ -71,11 +88,11 @@ const HomePage = (props) => {
     let text = l.dir == "DL" ? "\u2193" : "\u2191";
     text += " ";
     delete l.dir;
-    
+
     for (let key of Object.keys(l)) {
-      text +=key + ": " + l[key] +" "; 
+      text += key + ": " + l[key] + " ";
     }
-    
+
     return text;
   }
 
@@ -92,115 +109,185 @@ const HomePage = (props) => {
 
     if (data.message == "log_get") {
       setTimeout(() => {
+        // console.log(logs.length + " " + data.logs.length);
+
+        logs.unshift(...data.logs.reverse());
+
+        let logsToShow = [];
+
+        logsToShow = logs.filter(log => {
+
+          return (log.cell != null && cellsToLog.includes(log.cell.toString()) && layersToLog.includes(log.layer) && (layersToLog.includes('RRC') || layersToLog.includes('PHY') || layersToLog.includes('PHY')) ||
+            log.cell == null && layersToLog.includes(log.layer));
+        });
+
         setLogElement(<List mediaList>{
-          data.logs.reverse().map((log, idx) =>
-                <ListItem   title={getLogHeaders(log)} 
-               
-                className="flex-shrink-3" key={idx} after={getTime(log.timestamp)}  >
-               <ListItemCell style={{fontSize:14}}>{JSON.stringify(log.data, undefined, 4)}</ListItemCell>
-               </ListItem>
+          //cellsToLog;
+
+          logsToShow.map((log, idx) =>
+            <ListItem title={getLogHeaders(log)}
+              /*className="flex-shrink-3"*/ key={idx} header={getDate(log.timestamp) + " " + getTime(log.timestamp)}  >
+              <ListItemCell style={{ fontSize: 14 }}>{JSON.stringify(log.data, undefined, 4)}</ListItemCell>
+            </ListItem>
           )
         }</List>);
       }, 10);
-
     }
 
     if (data.message == "config_get") {
       let now = new Date();
       setConfigTime(now.toLocaleTimeString('fr-Fr'));
-      setNoiseLevelElement(<></>);
-      setCellsElement(<></>);
-      setNbCellsElement(<></>);
+      //setNoiseLevelElement(<></>);
+      // setCellsElement(<></>);
+      //  setNbCellsElement(<></>);
 
       setTimeout(() => {
 
-        onNoiseLevelChange(parseInt(data.rf_ports[0].channel_sim.noise_level));
-        setNoiseLevelElement(<List>
-          <ListItem key={99} >
-            <ListItemCell className="flex-shrink-3">
-              <Range key={99} min={-50} max={50} step={1} value={parseInt(noise_level)} label={true} scale={true} scaleSteps={20} onRangeChanged={(value) => onNoiseLevelChange(value)} />
-            </ListItemCell>
-            <ListItemCell className="width-auto flex-shrink-0">
-              <Button onClick={() => {/* console.log(cell.gain+" " + cell.n_id_cell) */webSocket.current.setNoiseLevel(noise_level); }} >Set</Button>
-            </ListItemCell>
-          </ListItem>
-        </List>
-        );
+        if (null != data.rf_ports[0].channel_sim) {
+          onNoiseLevelChange(parseInt(data.rf_ports[0].channel_sim.noise_level));
+          setNoiseLevelElement(<List>
+            <ListItem key={99} >
+              <ListItemCell className="flex-shrink-3">
+                <Range key={99} min={-50} max={50} step={1} value={parseInt(noise_level)} label={true} scale={true} scaleSteps={20} onRangeChanged={(value) => onNoiseLevelChange(value)} />
+              </ListItemCell>
+              <ListItemCell className="width-auto flex-shrink-0">
+                <Button onClick={() => {/* console.log(cell.gain+" " + cell.n_id_cell) */webSocket.current.setNoiseLevel(noise_level); }} >Set</Button>
+              </ListItemCell>
+            </ListItem>
+          </List>
+          );
+        } else {
+          setNoiseLevelElement(<>Unavailable</>)
+
+        }
       }, 30);
+
 
       setTimeout(() => {
         cells = [];
-
         for (let key of Object.keys(data.cells)) {
           cells.push(data.cells[key]);
           cells[cells.length - 1].id = key;
-
+          cellsToLog.push(data.cells[key].id);
         }
-
-
-        setCellsElement(<List >{
+        setCellsElement(<>{
           cells.map((cell, idx) =>
-            <ListItem key={idx} title={cell.id} tooltip={" ul_earfcn: " + cell.ul_earfcn} after={"pci: " + cell.n_id_cell + " dl_earfcn: " + cell.dl_earfcn} /*footer={JSON.stringify(cell)}*/>
-              <ListItemCell className="width-auto flex-shrink-0">
-                <Icon md="f7:radiowaves_right" />
-              </ListItemCell>
-              <ListItemCell className="flex-shrink-3">
-                <Range key={idx} min={-100} max={0} step={1} value={parseInt(cell.gain)} label={true} scale={true} scaleSteps={10} onRangeChanged={(value) => onGainChange(idx, value, "lte")} />
-              </ListItemCell>
-              <ListItemCell className="width-auto flex-shrink-0">
-                <Icon md="f7:badge_plus_radiowaves_right" />
-              </ListItemCell>
-              <ListItemCell className="width-auto flex-shrink-0">
-                <Button onClick={() => {/* console.log(cell.gain+" " + cell.n_id_cell) */webSocket.current.setGain(cell.id, cell.gain); }} >Set</Button>
-              </ListItemCell>
-            </ListItem>
-          )
-        }</List>);
+            <Block key={idx}>{buildCellElement(cell, idx, "lte")}</Block>)
+        }</>);
       }, 20);
+
       setTimeout(() => {
         nbCells = [];
         for (let key of Object.keys(data.nb_cells)) {
           nbCells.push(data.nb_cells[key]);
           nbCells[nbCells.length - 1].id = key;
+          cellsToLog.push(data.nb_cells[key].id);
         }
-        setNbCellsElement(<List >{
+        setNbCellsElement(<>{
           nbCells.map((cell, idx) =>
-            <ListItem key={idx} title={cell.id} tooltip={" ul_earfcn: " + cell.ul_earfcn} after={"pci: " + cell.n_id_ncell + " dl_earfcn: " + cell.dl_earfcn} /*footer={JSON.stringify(cell)}*/>
-
-              <ListItemCell className="width-auto flex-shrink-0">
-                <Icon md="f7:radiowaves_right" />
-              </ListItemCell>
-              <ListItemCell className="flex-shrink-3">
-                <Range key={idx} min={-100} max={0} step={1} value={parseInt(cell.gain)} label={true} scale={true} scaleSteps={10} onRangeChanged={(value) => onGainChange(idx, value, "nb")} />
-              </ListItemCell>
-              <ListItemCell className="width-auto flex-shrink-0">
-                <Icon md="f7:badge_plus_radiowaves_right" />
-              </ListItemCell>
-              <ListItemCell className="width-auto flex-shrink-0">
-                <Button onClick={() => { webSocket.current.setGain(cell.id, cell.gain); }} >Set</Button>
-              </ListItemCell> <br />
-
-            </ListItem>
-          )
-        }</List>);
+            <Block key={idx}>{buildCellElement(cell, idx, "nb")}</Block>)
+        }</>);
       }, 10);
-    }
 
+
+      let buildCellElement = (cell, idx, type) => {
+        return <Row >
+          <BlockHeader>Cell id #{cell.id}</BlockHeader>
+          <Col width="100">
+            <Row >
+              <Col width="5">
+                <Icon md="f7:radiowaves_right" />
+              </Col>
+              <Col width="80" >
+                <Range key={idx} min={-100} max={0} step={1} value={parseInt(cell.gain)} label={true} scale={true} scaleSteps={10} onRangeChanged={(value) => onGainChange(idx, value, type)} />
+              </Col>
+              <Col width="5">
+                <Icon md="f7:badge_plus_radiowaves_right" />
+              </Col>
+              <Col width="5">
+                <Button onClick={() => {/* console.log(cell.gain+" " + cell.n_id_cell) */webSocket.current.setGain(cell.id, cell.gain); }} >Set</Button>
+              </Col>
+            </Row>
+          </Col>
+          <Col width="100">
+            <Row >
+              <Col width="100"> &nbsp; </Col>
+              <Col> pci: {type == "lte" ? cell.n_id_cell : cell.n_id_ncell} </Col>
+              <Col> band:  {cell.band} </Col>
+              <Col> dl_earfcn:  {cell.dl_earfcn} </Col>
+              <Col> dl_freq:  {cell.dl_freq / 1000000}MHz </Col>
+              <Col > ul_earfcn:  {cell.ul_earfcn} </Col>
+              <Col > ul_freq:  {cell.ul_freq / 1000000}Mhz </Col>
+              <Col > ul_earfcn:  {cell.ul_earfcn} </Col>
+              {type == "nb" ? <Col> operation_mode:  {cell.operation_mode} </Col> :
+                <><Col > n_rb_dl:  {cell.n_rb_dl} (BW={cell.n_rb_dl / 5}MHz)</Col>
+                  <Col> n_rb_ul:  {cell.n_rb_ul} (BW={cell.n_rb_ul / 5}MHz)</Col> </>
+              }
+            </Row>
+          </Col>
+          <Col width="100">
+
+            <span>Logs </span>
+            <Toggle checked title="Logs" onChange={(e) => {
+
+              if (e.target.checked) {
+                if (!cellsToLog.includes(cell.id)) cellsToLog.push(cell.id);
+              } else {
+                cellsToLog = cellsToLog.filter(e => e !== cell.id)
+              }
+
+            }}>
+
+            </Toggle>
+
+          </Col>
+        </Row>
+      }
+      setTimeout(() => {
+        setLogControlsElement(<>{
+          layers.map((layer, idx) =>
+            <Col key={idx}>
+              <span checked> {layer} </span>
+              <Toggle checked onChange={(e) => {
+                if (e.target.checked) {
+                  if (!layersToLog.includes(layer)) layersToLog.push(layer);
+                } else {
+                  layersToLog = layersToLog.filter(l => l !== layer)
+                }
+              }}>
+              </Toggle>
+            </Col>
+          )
+        }</>);
+
+      }, 100);
+
+      if (null == loggerInterval) {
+        loggerInterval = setInterval(() => {
+          webSocket.current.getLog();
+
+        }, 1000);
+      }
+      else if (0 == cellsToLog.length) {
+        clearInterval(loggerInterval);
+        loggerInterval = null;
+      }
+    }
   }
 
   var setAll = () => {
 
-
   }
 
+
   return (
-    <Page name="home" onPageInit={() => { webSocket.current.getConfig(); }}>
+    <Page name="home" onPageInit={() => { webSocket.current.getConfig(); webSocket.current.getLog(); }}>
       <Panel resizable right push onPanelOpen={() => { webSocket.current.getLog(); }}>
         <View  >
           <Page>
             <BlockTitle>Log</BlockTitle>
             <Block >
-              {logElement}
+
               {/*  <ul>
             {messageHistory
               .map((message, idx) => <span key={idx}><h5>{message.time}</h5>{JSON.stringify(message.data)}</span>)}
@@ -225,22 +312,40 @@ const HomePage = (props) => {
         <Button large onClick={() => { setAll(); }}> Set All </Button>
         <Button panelOpen="right">Log</Button>
       </Toolbar>
-      <Block strong>
-        <BlockTitle>Noise level</BlockTitle>
-        {noiseLevelElement}
-        {cinrElement}
-      </Block>
-      {/* Page content */}
 
-      <Block strong>
-        <BlockTitle>Narrow-band cells</BlockTitle>
-        {nbCellsElement}
-      </Block>
-      <Block strong>
-        <BlockTitle>LTE cells</BlockTitle>
-        {cellsElement}
-      </Block>
+      <Row>
+        <Col >
+          <Row style={{ minWidth: '700px', 'maxHeight': '70%', 'overflowY': "auto", 'overflowX': "hidden" }}>
 
+            <BlockTitle>Noise level</BlockTitle>
+            {noiseLevelElement}
+            {cinrElement}
+
+          </Row>
+          {/* Page content */}
+          <Row style={{ minWidth: '700px', 'maxHeight': '70%', 'overflowY': "auto", 'overflowX': "hidden" }}>
+
+            <BlockTitle>Narrow-band cells</BlockTitle>
+            {nbCellsElement}
+          </Row>
+          <Row style={{ minWidth: '700px', 'maxHeight': '70%', 'overflowY': "auto", 'overflowX': "hidden" }}>
+            <BlockTitle>LTE cells</BlockTitle>
+            {cellsElement}
+          </Row>
+        </Col>
+        <Col >
+          <Block >
+          <BlockHeader>Logs</BlockHeader>
+            <Row> 
+           
+              {logControlsElement}
+            </Row>
+          </Block>
+          <Row style={{ 'maxHeight': '700px', 'overflowY': "auto", 'overflowX': "auto" }}>
+            {logElement}
+          </Row>
+        </Col>
+      </Row>
 
       <WebSocket ref={webSocket} props={"homepage"} callback={(data, status) => update(data, status)}></WebSocket>
     </Page>

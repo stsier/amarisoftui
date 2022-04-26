@@ -22,7 +22,7 @@ export const webSocketSingleton = singletonHook(getDarkMode, () => {
 
  var options = {extraHeaders: {"origin": "Test"}};
 var proto = 'ws';
-var server = '192.168.35.78:9001';
+var server = '192.168.35.100:9001';
 let url = proto + '://' + server + '/'
 //Public API that will echo messages sent to it back to the client
 const [socketUrl, setSocketUrl] = useState(url);
