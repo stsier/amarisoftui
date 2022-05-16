@@ -69,7 +69,8 @@ const  WebSocket = ({props, callback}, ref)  => {
         message: "log_get",
         min: 1,
         max: 4096,
-        headers: false
+        headers: false,
+        
       }
       sendMessage(JSON.stringify(msg));
     },
@@ -77,7 +78,7 @@ const  WebSocket = ({props, callback}, ref)  => {
     setGain(cell_id, gain) {
       let msg = {
         message: "cell_gain",
-        cell_id: cell_id,
+        cell_id: parseInt(cell_id),
         gain: gain,
       }
       sendMessage(JSON.stringify(msg));
@@ -91,15 +92,55 @@ const  WebSocket = ({props, callback}, ref)  => {
       sendMessage(JSON.stringify(msg));
     },
   
-    getUE(cell_id, gain) {
+    getUE() {
       //sendMessage('{"event": "ue_measurement_report", "message": "ran_ue_id"}');
       let msg = {
-        message: "register",
-        type: "ue_measurement_report",
+        message: "config_set",
+        logs: {
+          layers: {
+            all : {
+              level: error
+            }
+          },
+          signal: true,
+        }
       }
       sendMessage(JSON.stringify(msg));
     },
 
+    resetLog() {
+      
+      let msg = {
+        message: "log_reset",
+       
+      }
+      sendMessage(JSON.stringify(msg));
+    },
+    setLogs() {
+      let msg = {
+        message: "config_set",
+        logs: {
+          layers: {
+            phy : {
+              signal: 1
+            },
+            all: {
+              level: "info",
+              time: "full"
+            }
+          },
+          time: "full"
+         // signal: 1,
+        } 
+     //   message: "log_set",
+       // log: "phy",
+       // layer: "phy",
+       // level: "debug"
+      }
+
+
+      sendMessage(JSON.stringify(msg));
+    },
   
   }), []);
     return null;

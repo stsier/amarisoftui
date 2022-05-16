@@ -5,5 +5,10 @@
   --f7-theme-color-shade: #0066d6;
   --f7-theme-color-tint: #298fff;
 }
+.panel {
+  min-width: 100px;
+  max-width: 90vw;
+ 
+}
 
 /* Your app custom styles here */

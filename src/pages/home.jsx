@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   Page,
   Navbar,
+  Subnavbar,
   NavTitle,
   NavTitleLarge,
   NavRight,
@@ -26,11 +27,14 @@ import {
   Row,
   Col,
   BlockHeader,
-  Toggle
-
+  Toggle,
+  Searchbar
 } from 'framework7-react';
+import ReactJson from 'react-json-view'
+import LazyList from 'lazylist-react'
 
 import WebSocket from '../components/WebSocket';
+import { width } from 'dom7';
 
 let logs = [];
 let cellsToLog = [];
@@ -41,6 +45,7 @@ let layersToLog = layers;
 const HomePage = (props) => {
 
   const webSocket = useRef();
+  const dateRange = useRef();
 
   const [messageHistory, setMessageHistory] = useState([]);
   let [nbCellsElement, setNbCellsElement] = useState([]);
@@ -52,7 +57,14 @@ const HomePage = (props) => {
   let [noiseLevelElement, setNoiseLevelElement] = useState([]);
   let [logElement, setLogElement] = useState([]);
   let [logControlsElement, setLogControlsElement] = useState([]);
-
+  let [searchWord, setSearchWord] = useState([]);
+  let [timeStamp, setTimeStamp] = useState({min:0, max:10});
+  const [vlData, setVlData] = useState({
+    items: [],
+  });
+  const renderExternal = (vl, newData) => {
+    setVlData({ ...newData });
+  };
   let loggerInterval = null;
 
   let cells = [];
@@ -74,7 +86,8 @@ const HomePage = (props) => {
     return d.toLocaleTimeString("fr-Fr");
   }
   const getDate = (t) => {
-    let d = new Date(t);
+    
+    let d = t>7*24*60*60*1000? new Date(t) : new Date();
     return d.toLocaleDateString("fr-Fr");
   }
   const getLogHeaders = (log) => {
@@ -85,7 +98,7 @@ const HomePage = (props) => {
     delete l.src;
     delete l.idx;
     delete l.level;
-    let text = l.dir == "DL" ? "\u2193" : "\u2191";
+    let text = l.dir == ("DL" || "TO") ? "\u2193" : "\u2191";
     text += " ";
     delete l.dir;
 
@@ -96,8 +109,10 @@ const HomePage = (props) => {
     return text;
   }
 
+  
+
   let update = (data, status) => {
-    console.log(data);
+    if (data.logs && data.logs.length > 0) console.log(data);
     setStatus(status);
 
     /* if (data !== null) {
@@ -108,33 +123,113 @@ const HomePage = (props) => {
  */
 
     if (data.message == "log_get") {
+
+      if(logs.length==0)
       setTimeout(() => {
-        // console.log(logs.length + " " + data.logs.length);
+
+        setLogControlsElement(<List style={{width:"100%"}}>
+          <ListItem> <Row> {
+            layers.map((layer, idx) =>
+              <Col key={idx}>
+                <span checked> {layer} </span>
+                <Toggle checked onChange={(e) => {
+                  if (e.target.checked) {
+                    if (!layersToLog.includes(layer)) layersToLog.push(layer);
+                  } else {
+                    layersToLog = layersToLog.filter(l => l !== layer)
+                  }
+                }}>
+                </Toggle>
+              </Col>
+            )
+          } 
+          <Col><Button onClick={webSocket.current.resetLog()}>Reset</Button></Col>
+          </Row> 
+
+          </ListItem>
+            {/** 
+               * 
+          let d = new Date();
+          let hour = 60*60*1000;
+          let max =  d.getTime();
+      
+          let min =  max-24*hour;
+      
+          <ListItem after="Date" after={<span>{timeStamp.min} - {timeStamp.max} </span>}> 
+          <ListItemCell className="flex-shrink-3" >
+           <Range  ref={dateRange}  min={min} max={max} step={1000} dual={true} value={[max-6*hour, max]} label={false} scale={false} 
+              label={true}  formatLabel={(value) => {  let d = new Date(value); return (d.getHours()+":"+d.getMinutes()+":"+d.getSeconds()) ; } }  onRangeChanged={(value) => { setTimeStamp({min:value[0], max:value[1]}); }} />
+          </ListItemCell>
+          </ListItem>
+          */}
+          <ListItem> <Searchbar
+            // className="searchbar-demo"
+            onChange={(e) => { setSearchWord(e.target.value) }}
+            searchContainer=".search-list"
+            searchIn=".item-title"
+          //disableButton={!theme.aurora}
+          ></Searchbar></ListItem>
+        </List>);
+
+    }, 1000);
+    else {
+      
+      //console.log(dateRange.current);
+
+    }
+     
+      setTimeout(() => {
+        
 
         logs.unshift(...data.logs.reverse());
 
         let logsToShow = [];
+        logsToShow = logs.filter((log, index) => {
 
-        logsToShow = logs.filter(log => {
+          /* if(log.layer == "S1AP" || log.layer == "RRC") {
+             //log.data[0] = {"title":log.data[0]};
 
-          return (log.cell != null && cellsToLog.includes(log.cell.toString()) && layersToLog.includes(log.layer) && (layersToLog.includes('RRC') || layersToLog.includes('PHY') || layersToLog.includes('PHY')) ||
-            log.cell == null && layersToLog.includes(log.layer));
+             console.log(log.data.slice(1).join(""))
+             log.data = JSON.parse(log.data.slice(1).join(""))
+           }*/
+          // console.log(log.timestamp + " " + timeStamp.max)
+
+          return ( /*log.timestamp > timeStamp.min && log.timestamp < timeStamp.max && */
+            JSON.stringify(log).toUpperCase().trim().includes(searchWord.toString().toUpperCase()) &&
+            (log.cell != null && cellsToLog.includes(log.cell.toString()) && layersToLog.includes(log.layer) &&
+              (layersToLog.includes('RRC') || layersToLog.includes('MAC') || layersToLog.includes('PHY')) ||
+              (log.cell == null && layersToLog.includes(log.layer))));
         });
+        logsToShow = logsToShow.slice(0, 300);
 
-        setLogElement(<List mediaList>{
-          //cellsToLog;
+       //console.log(logs.length + " " + data.logs.length + " " + logsToShow.length);
 
-          logsToShow.map((log, idx) =>
-            <ListItem title={getLogHeaders(log)}
+        setLogElement(
+          <List
+            mediaList
+            virtualList
+            className="search-list searchbar-found"
+            virtualListParams={{ logsToShow, height: 70 }}
+          >{
+              //cellsToLog;
+
+              logsToShow.map((log, idx) =>
+
+              (<ListItem title={getLogHeaders(log)} virtualListIndex={logsToShow.indexOf(log)}
               /*className="flex-shrink-3"*/ key={idx} header={getDate(log.timestamp) + " " + getTime(log.timestamp)}  >
-              <ListItemCell style={{ fontSize: 14 }}>{JSON.stringify(log.data, undefined, 4)}</ListItemCell>
-            </ListItem>
-          )
-        }</List>);
+                <ListItemCell className="item-title" style={{ fontSize: 14 }}>
+                  {/* {JSON.stringify(log.data, undefined, 4)} */}
+                  <ReactJson collapsed displayDataTypes={false} name={log.data[0]} src={log.data} />
+
+                </ListItemCell>
+              </ListItem>)
+              )
+            }</List>);
       }, 10);
     }
 
     if (data.message == "config_get") {
+
       let now = new Date();
       setConfigTime(now.toLocaleTimeString('fr-Fr'));
       //setNoiseLevelElement(<></>);
@@ -158,7 +253,6 @@ const HomePage = (props) => {
           );
         } else {
           setNoiseLevelElement(<>Unavailable</>)
-
         }
       }, 30);
 
@@ -191,14 +285,14 @@ const HomePage = (props) => {
 
 
       let buildCellElement = (cell, idx, type) => {
-        return <Row >
+        return <Row>
           <BlockHeader>Cell id #{cell.id}</BlockHeader>
           <Col width="100">
-            <Row >
+            <Row>
               <Col width="5">
                 <Icon md="f7:radiowaves_right" />
               </Col>
-              <Col width="80" >
+              <Col width="80">
                 <Range key={idx} min={-100} max={0} step={1} value={parseInt(cell.gain)} label={true} scale={true} scaleSteps={10} onRangeChanged={(value) => onGainChange(idx, value, type)} />
               </Col>
               <Col width="5">
@@ -243,30 +337,13 @@ const HomePage = (props) => {
           </Col>
         </Row>
       }
-      setTimeout(() => {
-        setLogControlsElement(<>{
-          layers.map((layer, idx) =>
-            <Col key={idx}>
-              <span checked> {layer} </span>
-              <Toggle checked onChange={(e) => {
-                if (e.target.checked) {
-                  if (!layersToLog.includes(layer)) layersToLog.push(layer);
-                } else {
-                  layersToLog = layersToLog.filter(l => l !== layer)
-                }
-              }}>
-              </Toggle>
-            </Col>
-          )
-        }</>);
-
-      }, 100);
+  
 
       if (null == loggerInterval) {
         loggerInterval = setInterval(() => {
           webSocket.current.getLog();
 
-        }, 1000);
+        }, 3000);
       }
       else if (0 == cellsToLog.length) {
         clearInterval(loggerInterval);
@@ -281,18 +358,23 @@ const HomePage = (props) => {
 
 
   return (
-    <Page name="home" onPageInit={() => { webSocket.current.getConfig(); webSocket.current.getLog(); }}>
-      <Panel resizable right push onPanelOpen={() => { webSocket.current.getLog(); }}>
+    <Page name="home" onPageInit={() => {webSocket.current.setLogs(); webSocket.current.getConfig(); webSocket.current.getLog(); }}>
+      <Panel opened resizable right push onPanelOpen={() => { webSocket.current.getLog(); }}>
         <View  >
           <Page>
-            <BlockTitle>Log</BlockTitle>
-            <Block >
-
+            <Navbar  style={{ height: "180px"}} header="Logs">
+            {logControlsElement}
               {/*  <ul>
             {messageHistory
               .map((message, idx) => <span key={idx}><h5>{message.time}</h5>{JSON.stringify(message.data)}</span>)}
-          </ul>*/}
-            </Block>
+          </ul>*/} 
+            </Navbar>
+            <BlockTitle>Log List</BlockTitle>
+            <BlockTitle>Log List</BlockTitle>
+            <List className="searchbar-not-found">
+              <ListItem title="Nothing found"></ListItem>
+            </List>
+            {logElement}
           </Page>
         </View>
       </Panel>
@@ -308,44 +390,21 @@ const HomePage = (props) => {
         <Button onClick={() => { webSocket.current.getConfig(); }}
         //  disabled={  webSocket.current.readyState !== ReadyState.OPEN}
         >Get config</Button>
-        <Button onClick={() => { webSocket.current.getUE(); }}  >Get UE</Button>
-        <Button large onClick={() => { setAll(); }}> Set All </Button>
+        {/*  <Button onClick={() => { webSocket.current.getUE(); }}  >Get UE</Button>*/}
+        <Button disabled large onClick={() => { setAll(); }}> Set All </Button>
         <Button panelOpen="right">Log</Button>
       </Toolbar>
 
-      <Row>
-        <Col >
-          <Row style={{ minWidth: '700px', 'maxHeight': '70%', 'overflowY': "auto", 'overflowX': "hidden" }}>
+      <BlockTitle>Noise level</BlockTitle>
+      {noiseLevelElement}
+      {cinrElement}
 
-            <BlockTitle>Noise level</BlockTitle>
-            {noiseLevelElement}
-            {cinrElement}
+      <BlockTitle>Narrow-band cells</BlockTitle>
+      {nbCellsElement}
 
-          </Row>
-          {/* Page content */}
-          <Row style={{ minWidth: '700px', 'maxHeight': '70%', 'overflowY': "auto", 'overflowX': "hidden" }}>
 
-            <BlockTitle>Narrow-band cells</BlockTitle>
-            {nbCellsElement}
-          </Row>
-          <Row style={{ minWidth: '700px', 'maxHeight': '70%', 'overflowY': "auto", 'overflowX': "hidden" }}>
-            <BlockTitle>LTE cells</BlockTitle>
-            {cellsElement}
-          </Row>
-        </Col>
-        <Col >
-          <Block >
-          <BlockHeader>Logs</BlockHeader>
-            <Row> 
-           
-              {logControlsElement}
-            </Row>
-          </Block>
-          <Row style={{ 'maxHeight': '700px', 'overflowY': "auto", 'overflowX': "auto" }}>
-            {logElement}
-          </Row>
-        </Col>
-      </Row>
+      <BlockTitle>LTE cells</BlockTitle>
+      {cellsElement}
 
       <WebSocket ref={webSocket} props={"homepage"} callback={(data, status) => update(data, status)}></WebSocket>
     </Page>
