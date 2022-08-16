@@ -308,15 +308,17 @@ const HomePage = (props) => {
               <Col width="100"> &nbsp; </Col>
               <Col> pci: {type == "lte" ? cell.n_id_cell : cell.n_id_ncell} </Col>
               <Col> band:  {cell.band} </Col>
-              <Col> dl_earfcn:  {cell.dl_earfcn} </Col>
-              <Col> dl_freq:  {cell.dl_freq / 1000000}MHz </Col>
-              <Col > ul_earfcn:  {cell.ul_earfcn} </Col>
-              <Col > ul_freq:  {cell.ul_freq / 1000000}Mhz </Col>
-              <Col > ul_earfcn:  {cell.ul_earfcn} </Col>
-              {type == "nb" ? <Col> operation_mode:  {cell.operation_mode} </Col> :
+              <Col> dl_earfcn:  {cell.dl_earfcn} ( {cell.dl_freq / 1000000}MHz) </Col>
+              <Col > ul_earfcn:  {cell.ul_earfcn} ({cell.ul_freq / 1000000}Mhz) </Col>
+              {type == "nb" ?
+               <>
+               <Col> opmode:  {cell.operation_mode} </Col>
+              </> :
                 <><Col > n_rb_dl:  {cell.n_rb_dl} (BW={cell.n_rb_dl / 5}MHz)</Col>
                   <Col> n_rb_ul:  {cell.n_rb_ul} (BW={cell.n_rb_ul / 5}MHz)</Col> </>
               }
+              <Col> n_antenna:  {cell.n_antenna_dl}/ {cell.n_antenna_ul}</Col>
+              <Col> rf_port:  {cell.rf_port} </Col>
             </Row>
           </Col>
           <Col width="100">

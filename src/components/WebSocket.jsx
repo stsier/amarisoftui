@@ -139,7 +139,7 @@ const  WebSocket = ({props, callback}, ref)  => {
       }
 
 
-      sendMessage(JSON.stringify(msg));
+      //sendMessage(JSON.stringify(msg));
     },
   
   }), []);
