@@ -28,10 +28,12 @@ import {
   Col,
   BlockHeader,
   Toggle,
-  Searchbar
+  Searchbar,
+  Input
 } from 'framework7-react';
 import ReactJson from 'react-json-view'
 import LazyList from 'lazylist-react'
+import { isIP, isIPv4 } from 'is-ip';
 
 import WebSocket from '../components/WebSocket';
 import { width } from 'dom7';
@@ -40,12 +42,16 @@ let logs = [];
 let cellsToLog = [];
 let layers = ['NAS', 'RRC', 'S1AP', 'PHY', 'RLC', 'MAC'];
 let layersToLog = layers;
+let defaultAddress = '192.168.35.78:9001';
 
 
 const HomePage = (props) => {
 
   const webSocket = useRef();
   const dateRange = useRef();
+
+  let [serverAddress, setServerAddress] = useState(defaultAddress);
+  let [websocketElement, setWebsocketElement] = useState([]);
 
   const [messageHistory, setMessageHistory] = useState([]);
   let [nbCellsElement, setNbCellsElement] = useState([]);
@@ -58,7 +64,7 @@ const HomePage = (props) => {
   let [logElement, setLogElement] = useState([]);
   let [logControlsElement, setLogControlsElement] = useState([]);
   let [searchWord, setSearchWord] = useState([]);
-  let [timeStamp, setTimeStamp] = useState({min:0, max:10});
+  let [timeStamp, setTimeStamp] = useState({ min: 0, max: 10 });
   const [vlData, setVlData] = useState({
     items: [],
   });
@@ -86,8 +92,8 @@ const HomePage = (props) => {
     return d.toLocaleTimeString("fr-Fr");
   }
   const getDate = (t) => {
-    
-    let d = t>7*24*60*60*1000? new Date(t) : new Date();
+
+    let d = t > 7 * 24 * 60 * 60 * 1000 ? new Date(t) : new Date();
     return d.toLocaleDateString("fr-Fr");
   }
   const getLogHeaders = (log) => {
@@ -109,8 +115,6 @@ const HomePage = (props) => {
     return text;
   }
 
-  
-
   let update = (data, status) => {
     if (data.logs && data.logs.length > 0) console.log(data);
     setStatus(status);
@@ -124,29 +128,29 @@ const HomePage = (props) => {
 
     if (data.message == "log_get") {
 
-      if(logs.length==0)
-      setTimeout(() => {
+      if (logs.length == 0)
+        setTimeout(() => {
 
-        setLogControlsElement(<List style={{width:"100%"}}>
-          <ListItem> <Row> {
-            layers.map((layer, idx) =>
-              <Col key={idx}>
-                <span checked> {layer} </span>
-                <Toggle checked onChange={(e) => {
-                  if (e.target.checked) {
-                    if (!layersToLog.includes(layer)) layersToLog.push(layer);
-                  } else {
-                    layersToLog = layersToLog.filter(l => l !== layer)
-                  }
-                }}>
-                </Toggle>
-              </Col>
-            )
-          } 
-          <Col><Button onClick={webSocket.current.resetLog()}>Reset</Button></Col>
-          </Row> 
+          setLogControlsElement(<List style={{ width: "100%" }}>
+            <ListItem> <Row> {
+              layers.map((layer, idx) =>
+                <Col key={idx}>
+                  <span checked> {layer} </span>
+                  <Toggle checked onChange={(e) => {
+                    if (e.target.checked) {
+                      if (!layersToLog.includes(layer)) layersToLog.push(layer);
+                    } else {
+                      layersToLog = layersToLog.filter(l => l !== layer)
+                    }
+                  }}>
+                  </Toggle>
+                </Col>
+              )
+            }
+              <Col><Button onClick={webSocket.current.resetLog()}>Reset</Button></Col>
+            </Row>
 
-          </ListItem>
+            </ListItem>
             {/** 
                * 
           let d = new Date();
@@ -162,24 +166,24 @@ const HomePage = (props) => {
           </ListItemCell>
           </ListItem>
           */}
-          <ListItem> <Searchbar
-            // className="searchbar-demo"
-            onChange={(e) => { setSearchWord(e.target.value) }}
-            searchContainer=".search-list"
-            searchIn=".item-title"
-          //disableButton={!theme.aurora}
-          ></Searchbar></ListItem>
-        </List>);
+            <ListItem> <Searchbar
+              // className="searchbar-demo"
+              onChange={(e) => { setSearchWord(e.target.value) }}
+              searchContainer=".search-list"
+              searchIn=".item-title"
+            //disableButton={!theme.aurora}
+            ></Searchbar></ListItem>
+          </List>);
 
-    }, 1000);
-    else {
-      
-      //console.log(dateRange.current);
+        }, 1000);
+      else {
 
-    }
-     
+        //console.log(dateRange.current);
+
+      }
+
       setTimeout(() => {
-        
+
 
         logs.unshift(...data.logs.reverse());
 
@@ -202,7 +206,7 @@ const HomePage = (props) => {
         });
         logsToShow = logsToShow.slice(0, 300);
 
-       //console.log(logs.length + " " + data.logs.length + " " + logsToShow.length);
+        //console.log(logs.length + " " + data.logs.length + " " + logsToShow.length);
 
         setLogElement(
           <List
@@ -230,6 +234,9 @@ const HomePage = (props) => {
 
     if (data.message == "config_get") {
 
+      setCellsElement(<></>);
+      setNbCellsElement(<></>);
+
       let now = new Date();
       setConfigTime(now.toLocaleTimeString('fr-Fr'));
       //setNoiseLevelElement(<></>);
@@ -256,32 +263,33 @@ const HomePage = (props) => {
         }
       }, 30);
 
+      if (data.cells)
+        setTimeout(() => {
+          cells = [];
+          for (let key of Object.keys(data.cells)) {
+            cells.push(data.cells[key]);
+            cells[cells.length - 1].id = key;
+            cellsToLog.push(data.cells[key].id);
+          }
+          setCellsElement(<>{
+            cells.map((cell, idx) =>
+              <Block key={idx}>{buildCellElement(cell, idx, "lte")}</Block>)
+          }</>);
+        }, 20);
 
-      setTimeout(() => {
-        cells = [];
-        for (let key of Object.keys(data.cells)) {
-          cells.push(data.cells[key]);
-          cells[cells.length - 1].id = key;
-          cellsToLog.push(data.cells[key].id);
-        }
-        setCellsElement(<>{
-          cells.map((cell, idx) =>
-            <Block key={idx}>{buildCellElement(cell, idx, "lte")}</Block>)
-        }</>);
-      }, 20);
-
-      setTimeout(() => {
-        nbCells = [];
-        for (let key of Object.keys(data.nb_cells)) {
-          nbCells.push(data.nb_cells[key]);
-          nbCells[nbCells.length - 1].id = key;
-          cellsToLog.push(data.nb_cells[key].id);
-        }
-        setNbCellsElement(<>{
-          nbCells.map((cell, idx) =>
-            <Block key={idx}>{buildCellElement(cell, idx, "nb")}</Block>)
-        }</>);
-      }, 10);
+      if (data.nb_cells)
+        setTimeout(() => {
+          nbCells = [];
+          for (let key of Object.keys(data.nb_cells)) {
+            nbCells.push(data.nb_cells[key]);
+            nbCells[nbCells.length - 1].id = key;
+            cellsToLog.push(data.nb_cells[key].id);
+          }
+          setNbCellsElement(<>{
+            nbCells.map((cell, idx) =>
+              <Block key={idx}>{buildCellElement(cell, idx, "nb")}</Block>)
+          }</>);
+        }, 10);
 
 
       let buildCellElement = (cell, idx, type) => {
@@ -311,9 +319,9 @@ const HomePage = (props) => {
               <Col> dl_earfcn:  {cell.dl_earfcn} ( {cell.dl_freq / 1000000}MHz) </Col>
               <Col > ul_earfcn:  {cell.ul_earfcn} ({cell.ul_freq / 1000000}Mhz) </Col>
               {type == "nb" ?
-               <>
-               <Col> opmode:  {cell.operation_mode} </Col>
-              </> :
+                <>
+                  <Col> opmode:  {cell.operation_mode} </Col>
+                </> :
                 <><Col > n_rb_dl:  {cell.n_rb_dl} (BW={cell.n_rb_dl / 5}MHz)</Col>
                   <Col> n_rb_ul:  {cell.n_rb_ul} (BW={cell.n_rb_ul / 5}MHz)</Col> </>
               }
@@ -339,7 +347,7 @@ const HomePage = (props) => {
           </Col>
         </Row>
       }
-  
+
 
       if (null == loggerInterval) {
         loggerInterval = setInterval(() => {
@@ -355,23 +363,51 @@ const HomePage = (props) => {
   }
 
   var setAll = () => {
-
   }
 
 
+  const changeServerAddress = () => {
+    document.getElementById("address-button").classList.add("disabled");
+    console.log(serverAddress);
+    let settings = { address: serverAddress };
+    localStorage.setItem("cached_settings", JSON.stringify(settings));
+    webSocket.current.setSocket(serverAddress);
+  }
+  const getCachedServerAddress = (callback) => {
+    let tmp = JSON.parse(localStorage.getItem("cached_settings"));
+
+    callback((null != tmp && null != tmp.address ? tmp.address : defaultAddress));
+  }
+
   return (
-    <Page name="home" onPageInit={() => {webSocket.current.setLogs(); webSocket.current.getConfig(); webSocket.current.getLog(); }}>
-      <Panel opened resizable right push onPanelOpen={() => { webSocket.current.getLog(); }}>
+    <Page name="home" onPageInit={() => {
+      getCachedServerAddress((address) => {
+        let p = { address: address };
+        setServerAddress(address);
+        document.getElementById("address-input").firstChild.value = address;
+        setWebsocketElement(
+          <WebSocket ref={webSocket} props={p} callback={(data, status) => update(data, status)}></WebSocket>
+        ), (() => {
+
+          //webSocket.current.setSocket(serverAddress);
+          webSocket.current.setLogs();
+          //  webSocket.current.getConfig(); 
+          webSocket.current.getLog();
+        });
+
+
+      })
+    }}>
+      <Panel /* opened */ resizable right push onPanelOpen={() => { webSocket.current.getLog(); }}>
         <View  >
           <Page>
-            <Navbar  style={{ height: "180px"}} header="Logs">
-            {logControlsElement}
+            <Navbar style={{ height: "180px" }} header="Logs">
+              {logControlsElement}
               {/*  <ul>
             {messageHistory
               .map((message, idx) => <span key={idx}><h5>{message.time}</h5>{JSON.stringify(message.data)}</span>)}
-          </ul>*/} 
+          </ul>*/}
             </Navbar>
-            <BlockTitle>Log List</BlockTitle>
             <BlockTitle>Log List</BlockTitle>
             <List className="searchbar-not-found">
               <ListItem title="Nothing found"></ListItem>
@@ -384,8 +420,30 @@ const HomePage = (props) => {
       <Navbar>
         <NavTitle>Amarisoft UI </NavTitle>
         {/* <NavTitleLarge>Amarisoft UI</NavTitleLarge>*/}
-        <NavLeft>Last update: {configTime}</NavLeft>
-        <NavRight>Websocket is: {status}</NavRight>
+        <NavLeft><Row style={{minWidth: "500px", fontSize:"smaller"}}>
+          <Col width="25">  <Row>Last update: </Row> <Row>{configTime} </Row>  </Col>
+
+          <Col width="50" >  <Row> Server address:</Row>
+            <Row><Col width="70"><Input id="address-input" onChange={(e) => {
+              let ipValid = isIP(e.target.value.split(":")[0]);
+              let portValid = !isNaN(e.target.value.split(":")[1]);
+              if (ipValid && portValid) {
+                document.getElementById("address-button").classList.remove("disabled");
+                setServerAddress(e.target.value);
+              } else {
+                document.getElementById("address-button").classList.add("disabled");
+              }
+            }}
+              // validate:onValidate={(isValid) => console.log(isValid)}
+              type="text" defaultValue={serverAddress}></Input></Col>
+               <Col  width="30"><Button id="address-button" disabled onClick={changeServerAddress}>Set</Button>  </Col>
+            </Row>
+           
+          </Col>
+
+          <Col  width="25" >  <Row>Websocket is: </Row> <Row>{status}  </Row>    </Col>
+        </Row>
+        </NavLeft>
       </Navbar>
       {/* Toolbar */}
       <Toolbar bottom>
@@ -400,15 +458,12 @@ const HomePage = (props) => {
       <BlockTitle>Noise level</BlockTitle>
       {noiseLevelElement}
       {cinrElement}
-
       <BlockTitle>Narrow-band cells</BlockTitle>
       {nbCellsElement}
-
-
       <BlockTitle>LTE cells</BlockTitle>
       {cellsElement}
+      {websocketElement}
 
-      <WebSocket ref={webSocket} props={"homepage"} callback={(data, status) => update(data, status)}></WebSocket>
     </Page>
   )
 };

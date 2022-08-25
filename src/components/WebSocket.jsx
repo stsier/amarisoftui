@@ -15,16 +15,21 @@ import {
 const  WebSocket = ({props, callback}, ref)  => {
   var options = {extraHeaders: {"origin": "Test"}};
   var proto = 'ws';
-  var server = '192.168.35.100:9001';
-  let url = proto + '://' + server + '/'
   //Public API that will echo messages sent to it back to the client
-  const [socketUrl, setSocketUrl] = useState(url);
+  
+  const [socketUrl, setSocketUrl] = useState( proto + '://' + props.address + '/');
 
   const {
     sendMessage,
     lastMessage,
     readyState,
-  } = useWebSocket(socketUrl);
+  } = useWebSocket(socketUrl, {
+    onOpen: () =>  {
+      sendMessage('{"message": "config_get"}');
+    },
+    //Will attempt to reconnect on all close events, such as server shutting down
+    shouldReconnect: (closeEvent) => true,
+  });
 
   
   useEffect(() => {
@@ -42,23 +47,16 @@ const  WebSocket = ({props, callback}, ref)  => {
     [ReadyState.UNINSTANTIATED]: 'Uninstantiated',
   }[readyState];
 
-  const handleClickChangeSocketUrl = useCallback(() =>
-   {
-    setSocketUrl(url);
-   }
-  , []);
-
-  const handleClickSendMessage = useCallback(() =>
-    {
-      sendMessage('{"message": "config_get"}');
-    }
-  , []);
-    
+ 
 
   // external component API
   React.useImperativeHandle(ref, () => ({
     getStatus() {
-        handleClickChangeSocketUrl();
+      sendMessage('{"message": "config_get"}');
+    },
+    setSocket(url) {
+      setSocketUrl( proto + '://' + url + '/' ); 
+      
     },
     getConfig() {
       sendMessage('{"message": "config_get"}');
