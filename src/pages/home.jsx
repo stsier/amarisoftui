@@ -378,9 +378,16 @@ const HomePage = (props) => {
 
     callback((null != tmp && null != tmp.address ? tmp.address : defaultAddress));
   }
-
+  const switchDarkMode = (e) => {
+    if(e) {
+      document.getElementById("app").classList.add("dark")
+    }
+    else document.getElementById("app").classList.remove("dark");
+    //  console.log(f7.views.main.router.dark)
+  }
   return (
     <Page name="home" onPageInit={() => {
+      switchDarkMode(true);
       getCachedServerAddress((address) => {
         let p = { address: address };
         setServerAddress(address);
@@ -443,7 +450,12 @@ const HomePage = (props) => {
 
           <Col  width="25" >  <Row>Websocket is: </Row> <Row>{status}  </Row>    </Col>
         </Row>
+        
         </NavLeft>
+        <NavRight>
+                <span>Dark mode&nbsp;</span>
+                <Toggle defaultChecked onToggleChange = {switchDarkMode} ></Toggle>
+          </NavRight>
       </Navbar>
       {/* Toolbar */}
       <Toolbar bottom>

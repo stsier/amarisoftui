@@ -38,7 +38,7 @@ const AmarisoftUI = () => {
   });
 
   return (
-    <App { ...f7params } dark>
+    <App { ...f7params } id="app">
 
         {/* Your main view, should have "view-main" class */}
         <View main className="safe-areas" url="/" />
