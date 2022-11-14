@@ -1,4 +1,4 @@
-# Amarisoft UI
+# AmarisoftUI
 
 ## Framework7 CLI Options
 
@@ -6,19 +6,19 @@ Framework7 app created with following options:
 
 ```
 {
-  "cwd": "/home/stsier/amarisoftui",
+  "cwd": "/home/stsier/amarifostui",
   "type": [
-    "web"
+    "pwa"
   ],
-  "name": "Amarisoft UI",
+  "name": "AmarisoftUI",
   "framework": "react",
   "template": "blank",
   "bundler": "vite",
-  "cssPreProcessor": false,
+  "cssPreProcessor": "less",
   "theming": {
     "customColor": true,
-    "color": "#007aff",
-    "darkTheme": false,
+    "color": "#e0a1ff",
+    "darkTheme": true,
     "iconFonts": true,
     "fillBars": false
   },
@@ -42,6 +42,10 @@ npm install
 ## Vite
 
 There is a [Vite](https://vitejs.dev) bundler setup. It compiles and bundles all "front-end" resources. You should work only with files located in `/src` folder. Vite config located in `vite.config.js`.
+
+## PWA
+
+This is a PWA. Don't forget to check what is inside of your `service-worker.js`. It is also recommended that you disable service worker (or enable "Update on reload") in browser dev tools during development.
 ## Assets
 
 Assets (icons, splash screens) source images located in `assets-src` folder. To generate your own icons and splash screen images, you will need to replace all assets in this directory with your own images (pay attention to image size and format), and run the following command in the project directory:

@@ -5,12 +5,6 @@ var routes = [
   {
     path: '/',
     component: HomePage,
-    options: {
-      props: {
-        foo: 'bar',
-        bar: true,
-      },
-    }
   },
 ];
 

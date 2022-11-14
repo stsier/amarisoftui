@@ -20,6 +20,9 @@ export default {
     outDir: BUILD_DIR,
     assetsInlineLimit: 0,
     emptyOutDir: true,
+    rollupOptions: {
+      treeshake: false,
+    },
   },
   resolve: {
     alias: {

@@ -1,17 +1,17 @@
 {
-  "cwd": "/home/stsier/amarisoftui",
+  "cwd": "/home/stsier/amarifostui",
   "type": [
-    "web"
+    "pwa"
   ],
-  "name": "Amarisoft UI",
+  "name": "AmarisoftUI",
   "framework": "react",
   "template": "blank",
   "bundler": "vite",
-  "cssPreProcessor": false,
+  "cssPreProcessor": "less",
   "theming": {
     "customColor": true,
-    "color": "#007aff",
-    "darkTheme": false,
+    "color": "#e0a1ff",
+    "darkTheme": true,
     "iconFonts": true,
     "fillBars": false
   },
