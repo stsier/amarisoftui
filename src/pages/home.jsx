@@ -43,6 +43,7 @@ let cellsToLog = [];
 let layers = ['NAS', 'RRC', 'S1AP', 'PHY', 'RLC', 'MAC'];
 let layersToLog = layers;
 let defaultAddress = '192.168.35.78:9001';
+let defaultCommand = '{"message":"sib_set","cells":{"1":{"sib1":{"p_max":10}}}}';
 
 
 const HomePage = (props) => {
@@ -51,6 +52,7 @@ const HomePage = (props) => {
   const dateRange = useRef();
 
   let [serverAddress, setServerAddress] = useState(defaultAddress);
+  let [commandInput, setCommandInput] = useState(defaultCommand);
   let [websocketElement, setWebsocketElement] = useState([]);
 
   const [messageHistory, setMessageHistory] = useState([]);
@@ -366,17 +368,18 @@ const HomePage = (props) => {
   }
 
 
-  const changeServerAddress = () => {
+  const saveSettings = () => {
     document.getElementById("address-button").classList.add("disabled");
-    console.log(serverAddress);
-    let settings = { address: serverAddress };
+    
+    let settings = { address: serverAddress, command: commandInput };
+    console.log(settings);
     localStorage.setItem("cached_settings", JSON.stringify(settings));
-    webSocket.current.setSocket(serverAddress);
+    
   }
-  const getCachedServerAddress = (callback) => {
+  const getCachedSettings = (callback) => {
     let tmp = JSON.parse(localStorage.getItem("cached_settings"));
 
-    callback((null != tmp && null != tmp.address ? tmp.address : defaultAddress));
+    callback(tmp);
   }
   const switchDarkMode = (e) => {
     if(e) {
@@ -388,10 +391,14 @@ const HomePage = (props) => {
   return (
     <Page name="home" onPageInit={() => {
       switchDarkMode(true);
-      getCachedServerAddress((address) => {
+      getCachedSettings((settings) => {
+        let address = (null != settings && null != settings.address ? settings.address : defaultAddress);
+        let command = (null != settings && null != settings.command ? settings.command : defaultCommand);
         let p = { address: address };
         setServerAddress(address);
+        setCommandInput(command);
         document.getElementById("address-input").firstChild.value = address;
+        document.getElementById("command-input").firstChild.value = command;
         setWebsocketElement(
           <WebSocket ref={webSocket} props={p} callback={(data, status) => update(data, status)}></WebSocket>
         ), (() => {
@@ -443,7 +450,7 @@ const HomePage = (props) => {
             }}
               // validate:onValidate={(isValid) => console.log(isValid)}
               type="text" defaultValue={serverAddress}></Input></Col>
-               <Col  width="30"><Button id="address-button" disabled onClick={changeServerAddress}>Set</Button>  </Col>
+               <Col  width="30"><Button id="address-button" disabled onClick={() => {  webSocket.current.setSocket(serverAddress); saveSettings();}}>Set</Button>  </Col>
             </Row>
            
           </Col>
@@ -451,6 +458,18 @@ const HomePage = (props) => {
           <Col  width="25" >  <Row>Websocket is: </Row> <Row>{status}  </Row>    </Col>
         </Row>
         
+        <Col width="100" > 
+            <Row><Col width="70"><Input id="command-input" onChange={(e) => {
+                setCommandInput(e.target.value);
+            }}
+              // validate:onValidate={(isValid) => console.log(isValid)}
+              type="text" defaultValue={commandInput}></Input>
+              </Col>
+               <Col  width="30"><Button id="command-button"  onClick={() => { webSocket.current.sendCommand(commandInput); saveSettings(); }}> Send</Button>  </Col>
+            </Row>
+           
+          </Col>
+
         </NavLeft>
         <NavRight>
                 <span>Dark mode&nbsp;</span>

@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import useWebSocket, { ReadyState } from 'react-use-websocket';
 
 import {
+  f7,
   Page,
   Navbar,
   NavTitle,
@@ -11,6 +12,7 @@ import {
   Button,
   Block,
 } from 'framework7-react';
+import App from '../components/app.jsx';
 
 const  WebSocket = ({props, callback}, ref)  => {
   var options = {extraHeaders: {"origin": "Test"}};
@@ -60,6 +62,18 @@ const  WebSocket = ({props, callback}, ref)  => {
     },
     getConfig() {
       sendMessage('{"message": "config_get"}');
+     // sendMessage('{"message": "register", "register" : "ue_measurement_report"}');
+    },
+    sendCommand(command) {
+        try {
+          let a = JSON.parse(command);
+          sendMessage(command);
+      } catch (e) {
+        f7.dialog.alert(e,"incorrect JSON");
+
+       
+      }
+      
      // sendMessage('{"message": "register", "register" : "ue_measurement_report"}');
     },
     getLog() {
